@@ -23,6 +23,7 @@ out/
 
 # Testing
 coverage/
+tests/
 
 # Temporary / OS files
 .DS_Store

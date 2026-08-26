@@ -18,8 +18,17 @@ const createProduct = async(req, res, next) => {
 
 const getAllProducts = async(req, res, next) => {
     try {
-        const products = await productService.getAllProducts();
-        res.status(200).json({success: true, data: products});
+        const result = await productService.getAllProducts(req.query);
+        res.status(200).json({
+            success: true,
+            data: result.products,
+            meta: {
+                total: result.total,
+                page: result.page,
+                limit: result.limit,
+                pages: result.pages,
+            },
+        });
     } catch (error) {
         next(error);
     }
