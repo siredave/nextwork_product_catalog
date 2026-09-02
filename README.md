@@ -9,6 +9,7 @@ Table of contents
 - [Environment variables](#environment-variables)
 - [Scripts](#scripts)
 - [API endpoints (Postman-ready)](#api-endpoints-postman-ready)
+- [Authentication](#authentication)
 - [Validation & error format](#validation--error-format)
 - [File upload guidance](#file-upload-guidance)
 - [Testing](#testing)
@@ -18,6 +19,7 @@ Table of contents
 
 Features
 - CRUD for products (`name`, `price`, `category`, `description`)
+- User signup, login, logout, and refresh-token authentication with JWT
 - Image upload to Cloudinary (stored as `imageUrl` and `imagePublicId`)
 - Listing with pagination, filtering, and sorting
 - Input validation (`express-validator`) and consistent error payloads
@@ -57,6 +59,10 @@ PORT=5000
 CORS_ORIGIN=*
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
+JWT_SECRET=your-access-token-secret
+JWT_REFRESH_SECRET=your-refresh-token-secret
+ACCESS_TOKEN_EXPIRE=15m
+REFRESH_TOKEN_EXPIRE=7d
 NODE_ENV=development
 ```
 
@@ -73,9 +79,59 @@ Base URL: `http://localhost:5000/api/v1`
 General Postman tips
 - For JSON requests use `Body → raw → JSON`.
 - For image uploads use `Body → form-data` and set the `image` field to type `File`.
-- Replace `<PRODUCT_ID>` in examples with a real `_id` returned from list/create responses.
+- Replace `<PRODUCT_ID>` in examples with a real `_id` returned from list/create responses. The included Postman collection uses the `productId` collection variable.
+- Run Signup or Login first, then use the returned access token as `Bearer <ACCESS_TOKEN>` for protected requests.
 
-1) Health
+Authentication
+Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before they are stored. Access tokens are short-lived JWTs; refresh tokens can be exchanged for a new access and refresh token pair.
+
+1) Signup
+- Method: `POST`
+- URL: `/auth/signup`
+- Request body:
+
+```json
+{
+  "name": "Test User",
+  "email": "test@example.com",
+  "password": "secret123"
+}
+```
+
+- Expected response (201): returns `accessToken`, `refreshToken`, and the created user data.
+
+2) Login
+- Method: `POST`
+- URL: `/auth/login`
+- Request body:
+
+```json
+{
+  "email": "test@example.com",
+  "password": "secret123"
+}
+```
+
+- Expected response (200): returns `accessToken`, `refreshToken`, and the authenticated user data.
+
+3) Refresh access token
+- Method: `POST`
+- URL: `/auth/refresh-token`
+- Request body:
+
+```json
+{ "refreshToken": "<REFRESH_TOKEN>" }
+```
+
+- Expected response (200): returns a new access token and refresh token.
+
+4) Logout
+- Method: `POST`
+- URL: `/auth/logout`
+- Header: `Authorization: Bearer <ACCESS_TOKEN>`
+- Expected response (200): invalidates the stored refresh token.
+
+5) Health
 - Method: `GET`
 - URL: `/health`
 - Postman: `GET http://localhost:5000/api/v1/health`
@@ -85,7 +141,7 @@ General Postman tips
 { "message": "API is healthy" }
 ```
 
-2) List products
+6) List products
 - Method: `GET`
 - URL: `/products`
 - Query params: `category`, `sort`, `page`, `limit` (all optional)
@@ -107,7 +163,7 @@ curl "http://localhost:5000/api/v1/products?page=1&limit=5" -H "Accept: applicat
 }
 ```
 
-3) Get single product
+7) Get single product
 - Method: `GET`
 - URL: `/products/:id`
 - Postman: `GET http://localhost:5000/api/v1/products/<PRODUCT_ID>`
@@ -122,7 +178,7 @@ curl "http://localhost:5000/api/v1/products/<PRODUCT_ID>" -H "Accept: applicatio
 { "success": true, "data": {"_id":"64f9a1...","name":"Laptop","price":1299.99,"category":"electronics","description":"A powerful laptop","imageUrl":null} }
 ```
 
-4) Create product
+8) Create product
 Two Postman-ready options below.
 
 - Option A — form-data (image upload)
@@ -161,7 +217,7 @@ curl -X POST "http://localhost:5000/api/v1/products" \
 }
 ```
 
-5) Update product
+9) Update product
 - Method: `PUT`
 - URL: `/products/:id`
 - Option A — form-data (to replace or add image). Option B — raw JSON (fields only).
@@ -186,7 +242,7 @@ Example response (200):
 { "success": true, "data": {"_id":"6500b2...","name":"Updated Name","price":29.99,"category":"toys","description":"Nice toy","imageUrl":"https://res.cloudinary.com/.../image.jpg"} }
 ```
 
-6) Delete product
+10) Delete product
 - Method: `DELETE`
 - URL: `/products/:id`
 - Postman: `DELETE http://localhost:5000/api/v1/products/<PRODUCT_ID>`

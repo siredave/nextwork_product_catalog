@@ -3,8 +3,9 @@ const express = require("express");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const cors = require("cors");
-const rateLimit = require("express-rate-limit");
+const {apiLimiter} = require("./middleware/rateLimiter");
 const productRoutes = require("./routes/product.routes");
+const authRoutes = require("./routes/auth.routes");
 const multerErrorMiddleware = require("./middleware/multerErrorMiddleware");
 const errorHandler = require("./middleware/errorHandler");
 
@@ -20,30 +21,20 @@ app.use(
 
 // If the app is behind a proxy (e.g. Heroku, nginx), enable trust proxy
 app.set("trust proxy", 1);
-
-// Rate limiter configuration
-const apiLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      message: "Too many requests, please try again later",
-    });
-  },
-});
-
+//Middleware
 app.use(apiLimiter);
 app.use(express.json());
 app.use(morgan("dev"));
 
+//Health check route
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ message: "API is healthy" });
 });
 
+
+// Routes
 app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/auth", authRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
