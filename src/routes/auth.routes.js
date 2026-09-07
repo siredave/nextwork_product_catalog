@@ -4,10 +4,14 @@ const {
   login,
   logout,
   refreshAccessToken,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/auth.controller");
 const {
   validateSignup,
   validateLogin,
+  validateForgotPassword,
+  validateResetPassword,
 } = require("../middleware/validators/user.validator");
 const { protect } = require("../middleware/auth");
 
@@ -18,5 +22,11 @@ router.post("/signup", ...validateSignup, signup);
 router.post("/login", ...validateLogin, login);
 router.post("/logout", protect, logout);
 router.post("/refresh-token", refreshAccessToken);
+router.post("/forgot-password", ...validateForgotPassword, forgotPassword);
+router.put(
+  "/reset-password/:token",
+  ...validateResetPassword,
+  resetPassword,
+);
 
 module.exports = router;
