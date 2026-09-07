@@ -34,15 +34,21 @@ const getAllProducts = async (query = {}) => {
     "-category",
   ]);
 
-  const sortOption = sort && typeof sort === "string" && allowedSortFields.has(sort)
-    ? sort
-    : "-createdAt";
+  const sortOption =
+    sort && typeof sort === "string" && allowedSortFields.has(sort)
+      ? sort
+      : "-createdAt";
 
   const skip = (pageNum - 1) * limitNum;
 
   // Run query and count in parallel for efficiency
   const [products, total] = await Promise.all([
-    Product.find(filter).sort(sortOption).skip(skip).limit(limitNum).lean(),
+    Product.find(filter)
+      .populate("createdBy", "name email")
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
     Product.countDocuments(filter),
   ]);
 
@@ -61,7 +67,7 @@ const getProductById = async (id) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new AppError("Invalid product ID format", 400);
   }
-  const product = await Product.findById(id);
+  const product = await Product.findById(id).populate("createdBy", "name email");
 
   if (!product) {
     throw new AppError("Product not found", 404);
@@ -70,9 +76,13 @@ const getProductById = async (id) => {
 };
 
 // Update a product and return the updated version
-const updateProduct = async (id, data) => {
+const updateProduct = async (id, data, userId) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new AppError("Invalid product ID format", 400);
+  }
+
+  if (!userId) {
+    throw new AppError("Authentication is required", 401);
   }
 
   const existingProduct = await Product.findById(id);
@@ -82,6 +92,19 @@ const updateProduct = async (id, data) => {
   }
 
   if (
+    !existingProduct.createdBy ||
+    existingProduct.createdBy.toString() !== userId.toString()
+  ) {
+    throw new AppError("Not authorized to modify this product", 403);
+  }
+
+  const updatedProduct = await Product.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (
+    updatedProduct &&
     data.imagePublicId &&
     existingProduct.imagePublicId &&
     existingProduct.imagePublicId !== data.imagePublicId
@@ -96,22 +119,29 @@ const updateProduct = async (id, data) => {
     }
   }
 
-  const updatedProduct = await Product.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
-
   return updatedProduct;
 };
 
 // Remove a product from the database
-const deleteProduct = async (id) => {
+const deleteProduct = async (id, userId) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new AppError("Invalid product ID format", 400);
   }
-  const product = await Product.findByIdAndDelete(id);
+
+  if (!userId) {
+    throw new AppError("Authentication is required", 401);
+  }
+  const product = await Product.findById(id);
+
   if (!product) {
     throw new AppError("Product not found", 404);
+  }
+
+  if (
+    !product.createdBy ||
+    product.createdBy.toString() !== userId.toString()
+  ) {
+    throw new AppError("Not authorized to modify this product", 403);
   }
 
   // Delete the image from Cloudinary if one exists, but do not block the DB delete
@@ -126,7 +156,9 @@ const deleteProduct = async (id) => {
     }
   }
 
-  return product;
+  const deletedProduct = await Product.findByIdAndDelete(id);
+
+  return deletedProduct;
 };
 
 module.exports = {

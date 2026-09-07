@@ -9,14 +9,13 @@ const {
   validateSignup,
   validateLogin,
 } = require("../middleware/validators/user.validator");
-const { apiLimiter } = require("../middleware/rateLimiter");
 const { protect } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Rate limit + validate before hitting controller
-router.post("/signup", apiLimiter, ...validateSignup, signup);
-router.post("/login", apiLimiter, ...validateLogin, login);
+// Validate before hitting controller; the API-wide limiter is applied in app.js.
+router.post("/signup", ...validateSignup, signup);
+router.post("/login", ...validateLogin, login);
 router.post("/logout", protect, logout);
 router.post("/refresh-token", refreshAccessToken);
 

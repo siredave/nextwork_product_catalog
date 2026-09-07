@@ -12,7 +12,7 @@ const productSchema = new mongoose.Schema(
     price: {
       type: Number,
       required: [true, "Price is required"],
-      min: [0, "Price cannot be negative"],
+      min: [0.01, "Price must be greater than zero"],
     },
     category: {
       type: String,
@@ -33,6 +33,9 @@ const productSchema = new mongoose.Schema(
     type: String,
     default: null
   },
+    createdBy: {type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,},
     createdAt: { type: Date, default: Date.now },
   },
   

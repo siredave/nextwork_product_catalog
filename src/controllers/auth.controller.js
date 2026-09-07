@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/user.model');
-
+const sendEmail = require('../utils/sendEmail');
 
 const generateAccessToken = (id) => {
     return jwt.sign({id},
@@ -32,6 +32,17 @@ const signup = async (req, res, next) => {
 
     user.refreshToken = refreshToken;
     await user.save();
+
+    // Send welcome email (non-blocking: failure won't break signup)
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Welcome to Nextwork Product Catalog!',
+        html: `<h1>Welcome, ${user.name}!</h1><p>Thanks for signing up. You can now manage products in the catalog.</p>`,
+      });
+    } catch (emailError) {
+      console.error('Welcome email failed:', emailError.message);
+    }
 
     res.status(201).json({
       success: true,
