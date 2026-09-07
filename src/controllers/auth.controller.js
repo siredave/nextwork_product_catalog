@@ -145,4 +145,81 @@ const refreshAccessToken = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, logout, refreshAccessToken };
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Check if a user exists with this email
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'No user found with that email' });
+
+    // Generate a random token and hash it for database storage
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+   try {
+     // Build the reset URL and send the plain token via email
+     const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/reset-password/${resetToken}`;
+     await sendEmail({ to: user.email, subject: 'Password Reset Request', html: `<h1>Password Reset</h1><p>You requested a password reset.</p><p>Your reset token: <strong>${resetToken}</strong></p><p>Make a request to: ${resetUrl}</p><p>This token expires in 10 minutes.</p>` });
+ 
+     res.status(200).json({ message: 'Password reset email sent' });
+   } catch (error) {
+      console.error('Error sending password reset email:', error);
+   }
+  } catch (error) {
+    next(error);
+}
+};
+
+
+const resetPassword = async (req, res, next) => {
+  try {
+    // Hash the token from the URL to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    // Find user with matching token that hasn't expired
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    }).select("+password");
+    if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
+
+    // Set the new password and clear reset fields
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ message: 'Please provide a new password' });
+
+    const isSamePassword = await user.comparePassword(password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        message: 'New password must be different from the old password',
+      });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    // Generate fresh tokens so the user is logged in immediately
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successful', accessToken, refreshToken });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+module.exports = {
+  signup,
+  login,
+  logout,
+  refreshAccessToken,
+  forgotPassword,
+  resetPassword,
+};

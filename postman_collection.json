@@ -24,6 +24,11 @@
       "key": "refreshToken",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -241,6 +246,36 @@
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+      }
+    },
+    {
+      "name": "Forgot password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["auth", "forgot-password"] }
+      }
+    },
+    {
+      "name": "Reset password",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"password\": \"newsecret123\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/auth/reset-password/{{resetToken}}", "host": ["{{baseUrl}}"], "path": ["auth", "reset-password", "{{resetToken}}"] }
       }
     }
   ]

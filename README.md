@@ -21,6 +21,7 @@ Table of contents
 Features
 - CRUD for products (`name`, `price`, `category`, `description`)
 - User signup, login, logout, and refresh-token authentication with JWT
+- Password recovery with expiring reset tokens and email delivery through Resend
 - Ownership-based authorization for product creation, updates, and deletion
 - Image upload to Cloudinary (stored as `imageUrl` and `imagePublicId`)
 - Listing with pagination, filtering, and sorting
@@ -136,6 +137,34 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 - Header: `Authorization: Bearer <ACCESS_TOKEN>`
 - Expected response (200): invalidates the stored refresh token.
 
+5) Forgot password
+- Method: `POST`
+- URL: `/auth/forgot-password`
+- Request body:
+
+```json
+{ "email": "test@example.com" }
+```
+
+- Expected response (200): sends a password-reset email containing a one-time token that expires after 10 minutes.
+- The request body accepts only `email`; unexpected fields are rejected.
+
+6) Reset password
+- Method: `PUT`
+- URL: `/auth/reset-password/:token`
+- Request body:
+
+```json
+{ "password": "newsecret123" }
+```
+
+- Expected response (200): updates the password and returns a fresh access and refresh token pair.
+- The new password must be at least six characters and different from the previous password.
+- The request body accepts only `password`; unexpected fields are rejected.
+- The reset token is hashed before lookup, expires after 10 minutes, and is cleared after use.
+
+Use the `resetToken` variable in the Postman collection with the token received in the reset email.
+
 Authorization
 Product mutations require a valid access token in the request header:
 
@@ -150,7 +179,7 @@ Authorization: Bearer <ACCESS_TOKEN>
 - Missing or invalid tokens return `401 Unauthorized`.
 - A valid token for a different product owner returns `403 Forbidden` for update or delete attempts.
 
-5) Health
+7) Health
 - Method: `GET`
 - URL: `/health`
 - Postman: `GET http://localhost:5000/api/v1/health`
@@ -160,7 +189,7 @@ Authorization: Bearer <ACCESS_TOKEN>
 { "message": "API is healthy" }
 ```
 
-6) List products
+8) List products
 - Method: `GET`
 - URL: `/products`
 - Query params: `category`, `sort`, `page`, `limit` (all optional)
@@ -182,7 +211,7 @@ curl "http://localhost:5000/api/v1/products?page=1&limit=5" -H "Accept: applicat
 }
 ```
 
-7) Get single product
+9) Get single product
 - Method: `GET`
 - URL: `/products/:id`
 - Postman: `GET http://localhost:5000/api/v1/products/<PRODUCT_ID>`
@@ -197,7 +226,7 @@ curl "http://localhost:5000/api/v1/products/<PRODUCT_ID>" -H "Accept: applicatio
 { "success": true, "data": {"_id":"64f9a1...","name":"Laptop","price":1299.99,"category":"electronics","description":"A powerful laptop","imageUrl":null} }
 ```
 
-8) Create product
+10) Create product
 Two Postman-ready options below.
 
 This endpoint requires `Authorization: Bearer <ACCESS_TOKEN>`.
@@ -239,7 +268,7 @@ curl -X POST "http://localhost:5000/api/v1/products" \
 }
 ```
 
-9) Update product
+11) Update product
 - Method: `PUT`
 - URL: `/products/:id`
 - Header: `Authorization: Bearer <ACCESS_TOKEN>`
@@ -266,7 +295,7 @@ Example response (200):
 { "success": true, "data": {"_id":"6500b2...","name":"Updated Name","price":29.99,"category":"toys","description":"Nice toy","imageUrl":"https://res.cloudinary.com/.../image.jpg"} }
 ```
 
-10) Delete product
+12) Delete product
 - Method: `DELETE`
 - URL: `/products/:id`
 - Header: `Authorization: Bearer <ACCESS_TOKEN>`
