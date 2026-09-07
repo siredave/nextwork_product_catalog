@@ -10,6 +10,7 @@ Table of contents
 - [Scripts](#scripts)
 - [API endpoints (Postman-ready)](#api-endpoints-postman-ready)
 - [Authentication](#authentication)
+- [Authorization](#authorization)
 - [Validation & error format](#validation--error-format)
 - [File upload guidance](#file-upload-guidance)
 - [Testing](#testing)
@@ -20,6 +21,7 @@ Table of contents
 Features
 - CRUD for products (`name`, `price`, `category`, `description`)
 - User signup, login, logout, and refresh-token authentication with JWT
+- Ownership-based authorization for product creation, updates, and deletion
 - Image upload to Cloudinary (stored as `imageUrl` and `imagePublicId`)
 - Listing with pagination, filtering, and sorting
 - Input validation (`express-validator`) and consistent error payloads
@@ -29,6 +31,7 @@ Prerequisites
 - Node.js 18+ (or compatible LTS)
 - A running MongoDB instance (Atlas or self-hosted)
 - Cloudinary account for image uploads (or remove upload middleware to disable images)
+- Resend account and verified sender address for signup welcome emails
 
 Quick start
 1. Clone the repository and open the backend folder:
@@ -63,10 +66,12 @@ JWT_SECRET=your-access-token-secret
 JWT_REFRESH_SECRET=your-refresh-token-secret
 ACCESS_TOKEN_EXPIRE=15m
 REFRESH_TOKEN_EXPIRE=7d
+RESEND_API_KEY=your-resend-api-key
+RESEND_FROM_EMAIL=Your App <onboarding@yourdomain.com>
 NODE_ENV=development
 ```
 
-Notes: [src/config/db.js](src/config/db.js#L1) reads `MONGODB_URI` and [src/config/cloudinary.js](src/config/cloudinary.js#L1) requires the Cloudinary keys.
+Notes: [src/config/db.js](src/config/db.js#L1) reads `MONGODB_URI`, [src/config/cloudinary.js](src/config/cloudinary.js#L1) requires the Cloudinary keys, and [src/utils/sendEmail.js](src/utils/sendEmail.js#L1) requires both Resend variables.
 
 Scripts
 - `npm run dev` — start with `nodemon` (development)
@@ -83,7 +88,7 @@ General Postman tips
 - Run Signup or Login first, then use the returned access token as `Bearer <ACCESS_TOKEN>` for protected requests.
 
 Authentication
-Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before they are stored. Access tokens are short-lived JWTs; refresh tokens can be exchanged for a new access and refresh token pair.
+Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before they are stored. Access tokens are short-lived JWTs; refresh tokens can be exchanged for a new access and refresh token pair. Signup also sends a welcome email through Resend when email configuration is available. Email delivery failures are logged and do not cancel account creation.
 
 1) Signup
 - Method: `POST`
@@ -130,6 +135,20 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 - URL: `/auth/logout`
 - Header: `Authorization: Bearer <ACCESS_TOKEN>`
 - Expected response (200): invalidates the stored refresh token.
+
+Authorization
+Product mutations require a valid access token in the request header:
+
+```http
+Authorization: Bearer <ACCESS_TOKEN>
+```
+
+- `POST /products` requires authentication and records the authenticated user as `createdBy`.
+- `PUT /products/:id` requires authentication and can only be used by the product owner.
+- `DELETE /products/:id` requires authentication and can only be used by the product owner.
+- `GET /products` and `GET /products/:id` are publicly readable.
+- Missing or invalid tokens return `401 Unauthorized`.
+- A valid token for a different product owner returns `403 Forbidden` for update or delete attempts.
 
 5) Health
 - Method: `GET`
@@ -181,6 +200,8 @@ curl "http://localhost:5000/api/v1/products/<PRODUCT_ID>" -H "Accept: applicatio
 8) Create product
 Two Postman-ready options below.
 
+This endpoint requires `Authorization: Bearer <ACCESS_TOKEN>`.
+
 - Option A — form-data (image upload)
   - Postman: `POST http://localhost:5000/api/v1/products` → `Body` → `form-data`
   - Add keys: `name` (Text), `price` (Text), `category` (Text), `description` (Text), `image` (File)
@@ -189,6 +210,7 @@ Two Postman-ready options below.
 
 ```bash
 curl -X POST "http://localhost:5000/api/v1/products" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -F "name=My Product" \
   -F "price=19.99" \
   -F "category=toys" \
@@ -220,6 +242,7 @@ curl -X POST "http://localhost:5000/api/v1/products" \
 9) Update product
 - Method: `PUT`
 - URL: `/products/:id`
+- Header: `Authorization: Bearer <ACCESS_TOKEN>`
 - Option A — form-data (to replace or add image). Option B — raw JSON (fields only).
 
 Raw JSON example (Postman `raw -> JSON`):
@@ -232,6 +255,7 @@ Example cURL (JSON):
 
 ```bash
 curl -X PUT "http://localhost:5000/api/v1/products/<PRODUCT_ID>" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"name":"Updated Name","price":29.99}'
 ```
@@ -245,12 +269,14 @@ Example response (200):
 10) Delete product
 - Method: `DELETE`
 - URL: `/products/:id`
+- Header: `Authorization: Bearer <ACCESS_TOKEN>`
 - Postman: `DELETE http://localhost:5000/api/v1/products/<PRODUCT_ID>`
 
 Example cURL:
 
 ```bash
-curl -X DELETE "http://localhost:5000/api/v1/products/<PRODUCT_ID>"
+curl -X DELETE "http://localhost:5000/api/v1/products/<PRODUCT_ID>" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
 Example response (200):
@@ -276,6 +302,11 @@ File upload guidance
 - Allowed types: `image/jpeg`, `image/png`, `image/webp`.
 - Max file size: 5 MB. Oversize and unexpected file field errors return 400 (see [src/middleware/multerErrorMiddleware.js](src/middleware/multerErrorMiddleware.js#L1)).
 - Field name for file: `image` (required by the routes' middleware).
+
+Testing
+- Run the full test suite with `npm test`.
+- The tests cover route-not-found responses, validation errors, product listing, update validation, and resilience when Cloudinary cleanup fails.
+- Tests use controlled service and Cloudinary stubs; use a configured MongoDB and Cloudinary environment to exercise the full production integrations.
 
 
 

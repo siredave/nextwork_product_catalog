@@ -7,12 +7,16 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controllers/product.controller");
+
 const {
   createProductValidator,
   updateProductValidator,
   idParamValidator,
 } = require("../middleware/validators/product.validator");
+
 const validate = require("../middleware/validate");
+const { protect } = require('../middleware/auth')
+
 
 const router = express.Router();
 
@@ -20,6 +24,7 @@ router.post(
   "/",
   createProductValidator,
   validate,
+  protect,
   upload.single("image"),
   createProduct,
 );
@@ -30,9 +35,10 @@ router.put(
   idParamValidator,
   updateProductValidator,
   validate,
+  protect,
   upload.single("image"),
   updateProduct,
 );
-router.delete("/:id", idParamValidator, validate, deleteProduct);
+router.delete("/:id", idParamValidator, validate, protect, deleteProduct);
 
 module.exports = router;
