@@ -32,7 +32,8 @@ Prerequisites
 - Node.js 18+ (or compatible LTS)
 - A running MongoDB instance (Atlas or self-hosted)
 - Cloudinary account for image uploads (or remove upload middleware to disable images)
-- Resend account and verified sender address for signup welcome emails
+- Resend account and verified sender address for signup welcome emails and password reset emails
+- For local testing, use a Resend-approved test email like `onboarding@resend.dev` or a verified domain email address
 
 Quick start
 1. Clone the repository and open the backend folder:
@@ -91,6 +92,11 @@ General Postman tips
 Authentication
 Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before they are stored. Access tokens are short-lived JWTs; refresh tokens can be exchanged for a new access and refresh token pair. Signup also sends a welcome email through Resend when email configuration is available. Email delivery failures are logged and do not cancel account creation.
 
+Security notes:
+- The API temporarily locks an account after several failed login attempts to reduce brute-force attacks.
+- A refresh token is invalidated when it is missing, tampered with, or no longer matches the stored value.
+- Password reset tokens are hashed before storage, expire after 10 minutes, and are cleared after a successful reset.
+
 1) Signup
 - Method: `POST`
 - URL: `/auth/signup`
@@ -99,7 +105,7 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 ```json
 {
   "name": "Test User",
-  "email": "test@example.com",
+  "email": "onboarding@resend.dev",
   "password": "secret123"
 }
 ```
@@ -113,12 +119,13 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 
 ```json
 {
-  "email": "test@example.com",
+  "email": "onboarding@resend.dev",
   "password": "secret123"
 }
 ```
 
 - Expected response (200): returns `accessToken`, `refreshToken`, and the authenticated user data.
+- Repeated bad password attempts can trigger a temporary account lockout.
 
 3) Refresh access token
 - Method: `POST`
@@ -130,6 +137,7 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 ```
 
 - Expected response (200): returns a new access token and refresh token.
+- Invalid or revoked refresh tokens return `401`.
 
 4) Logout
 - Method: `POST`
@@ -143,11 +151,12 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 - Request body:
 
 ```json
-{ "email": "test@example.com" }
+{ "email": "onboarding@resend.dev" }
 ```
 
 - Expected response (200): sends a password-reset email containing a one-time token that expires after 10 minutes.
 - The request body accepts only `email`; unexpected fields are rejected.
+- Use a Resend-approved address or a verified domain email for live testing.
 
 6) Reset password
 - Method: `PUT`

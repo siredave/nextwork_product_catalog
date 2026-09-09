@@ -202,11 +202,21 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"secret123\"\n}",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"onboarding@resend.dev\",\n  \"password\": \"secret123\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": { "raw": "{{baseUrl}}/auth/signup", "host": ["{{baseUrl}}"], "path": ["auth", "signup"] }
-      }
+      },
+      "response": [
+        {
+          "name": "Signup success",
+          "originalRequest": {},
+          "status": "Created",
+          "code": 201,
+          " _postman_previewlanguage": "json",
+          "body": "{\n  \"success\": true,\n  \"message\": \"User created successfully\",\n  \"accessToken\": \"<JWT>\",\n  \"refreshToken\": \"<JWT>\",\n  \"data\": { \"id\": \"<id>\", \"name\": \"Test User\", \"email\": \"onboarding@resend.dev\" }\n}"
+        }
+      ]
     },
     {
       "name": "Login",
@@ -217,11 +227,21 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"secret123\"\n}",
+          "raw": "{\n  \"email\": \"onboarding@resend.dev\",\n  \"password\": \"secret123\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
-      }
+      },
+      "response": [
+        {
+          "name": "Login success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          " _postman_previewlanguage": "json",
+          "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"accessToken\": \"<JWT>\",\n  \"refreshToken\": \"<JWT>\",\n  \"data\": { \"id\": \"<id>\", \"name\": \"Test User\", \"email\": \"onboarding@resend.dev\" }\n}"
+        }
+      ]
     },
     {
       "name": "Refresh access token",
@@ -236,7 +256,17 @@
           "options": { "raw": { "language": "json" } }
         },
         "url": { "raw": "{{baseUrl}}/auth/refresh-token", "host": ["{{baseUrl}}"], "path": ["auth", "refresh-token"] }
-      }
+      },
+      "response": [
+        {
+          "name": "Refresh success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          " _postman_previewlanguage": "json",
+          "body": "{\n  \"accessToken\": \"<JWT>\",\n  \"refreshToken\": \"<JWT>\"\n}"
+        }
+      ]
     },
     {
       "name": "Logout",
@@ -246,7 +276,17 @@
           { "key": "Authorization", "value": "Bearer {{accessToken}}" }
         ],
         "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
-      }
+      },
+      "response": [
+        {
+          "name": "Logout success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          " _postman_previewlanguage": "json",
+          "body": "{\n  \"message\": \"Logged out successfully\"\n}"
+        }
+      ]
     },
     {
       "name": "Forgot password",
@@ -257,11 +297,21 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"test@example.com\"\n}",
+          "raw": "{\n  \"email\": \"onboarding@resend.dev\"\n}",
           "options": { "raw": { "language": "json" } }
         },
         "url": { "raw": "{{baseUrl}}/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["auth", "forgot-password"] }
-      }
+      },
+      "response": [
+        {
+          "name": "Forgot password success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          " _postman_previewlanguage": "json",
+          "body": "{\n  \"message\": \"Password reset email sent\"\n}"
+        }
+      ]
     },
     {
       "name": "Reset password",
@@ -276,7 +326,17 @@
           "options": { "raw": { "language": "json" } }
         },
         "url": { "raw": "{{baseUrl}}/auth/reset-password/{{resetToken}}", "host": ["{{baseUrl}}"], "path": ["auth", "reset-password", "{{resetToken}}"] }
-      }
+      },
+      "response": [
+        {
+          "name": "Reset password success",
+          "originalRequest": {},
+          "status": "OK",
+          "code": 200,
+          " _postman_previewlanguage": "json",
+          "body": "{\n  \"message\": \"Password reset successful\",\n  \"accessToken\": \"<JWT>\",\n  \"refreshToken\": \"<JWT>\"\n}"
+        }
+      ]
     }
   ]
 }

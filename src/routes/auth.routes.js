@@ -6,7 +6,9 @@ const {
   refreshAccessToken,
   forgotPassword,
   resetPassword,
+  changePassword,
 } = require("../controllers/auth.controller");
+
 const {
   validateSignup,
   validateLogin,
@@ -14,6 +16,9 @@ const {
   validateResetPassword,
 } = require("../middleware/validators/user.validator");
 const { protect } = require("../middleware/auth");
+
+
+
 
 const router = express.Router();
 
@@ -28,5 +33,6 @@ router.put(
   ...validateResetPassword,
   resetPassword,
 );
+router.put("/change-password", protect, changePassword);
 
 module.exports = router;

@@ -62,16 +62,39 @@ const signup = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    const MAX_ATTEMPTS = 5;
+    const LOCK_TIME = 15 * 60 * 1000;
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password +loginAttempts +lockUntil');
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if the account is locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+      return res.status(423).json({ message: 'Account is locked. Please try again later.' });
+    }
+
+    // Reset login attempts if the lock period has expired
+    if (user.lockUntil && user.lockUntil <= Date.now()) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+    }
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      user.loginAttempts += 1;
+      if (user.loginAttempts >= MAX_ATTEMPTS) {
+        user.lockUntil = Date.now() + LOCK_TIME;
+      }
+      await user.save();
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    // Reset login attempts on successful login
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
 
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
@@ -126,8 +149,14 @@ const refreshAccessToken = async (req, res, next) => {
     }
 
     const user = await User.findById(decoded.id).select('+refreshToken');
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user) {
       return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+
+    if( user.refreshToken !== refreshToken){
+      user.refreshToken = undefined;
+      await user.save();
+      return res.status(401).json({ message: 'Refresh token has been revoked' });
     }
 
     const newAccessToken = generateAccessToken(user._id);
@@ -165,9 +194,10 @@ const forgotPassword = async (req, res, next) => {
      await sendEmail({ to: user.email, subject: 'Password Reset Request', html: `<h1>Password Reset</h1><p>You requested a password reset.</p><p>Your reset token: <strong>${resetToken}</strong></p><p>Make a request to: ${resetUrl}</p><p>This token expires in 10 minutes.</p>` });
  
      res.status(200).json({ message: 'Password reset email sent' });
-   } catch (error) {
+      } catch (error) {
       console.error('Error sending password reset email:', error);
-   }
+      return res.status(500).json({ message: 'Error sending password reset email' });
+    }
   } catch (error) {
     next(error);
 }
@@ -214,6 +244,37 @@ const resetPassword = async (req, res, next) => {
 };
 
 
+// Change password for logged-in users
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Please provide current and new passwords',
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: 'New password must be at least 6 characters',
+      });
+    }
+
+    // Fetch the user with their password field
+    const user = await User.findById(req.user._id).select('+password');
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Set new password (pre-save hook hashes it automatically)
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 module.exports = {
   signup,
@@ -222,4 +283,5 @@ module.exports = {
   refreshAccessToken,
   forgotPassword,
   resetPassword,
+  changePassword,
 };
