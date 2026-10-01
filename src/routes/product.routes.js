@@ -15,8 +15,7 @@ const {
 } = require("../middleware/validators/product.validator");
 
 const validate = require("../middleware/validate");
-const { protect } = require('../middleware/auth')
-
+const { protect, authorizeRoles } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -25,6 +24,7 @@ router.post(
   createProductValidator,
   validate,
   protect,
+  authorizeRoles("admin"),
   upload.single("image"),
   createProduct,
 );
@@ -36,9 +36,17 @@ router.put(
   updateProductValidator,
   validate,
   protect,
+  authorizeRoles("admin"),
   upload.single("image"),
   updateProduct,
 );
-router.delete("/:id", idParamValidator, validate, protect, deleteProduct);
+router.delete(
+  "/:id",
+  idParamValidator,
+  validate,
+  protect,
+  authorizeRoles("admin"),
+  deleteProduct,
+);
 
 module.exports = router;

@@ -1,19 +1,19 @@
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const User = require('../models/user.model');
-const sendEmail = require('../utils/sendEmail');
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const User = require("../models/user.model");
+const sendEmail = require("../utils/sendEmail");
 
 const generateAccessToken = (id) => {
-    return jwt.sign({id},
-        process.env.JWT_SECRET, 
-        {expiresIn: process.env.ACCESS_TOKEN_EXPIRE});    
-}
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.ACCESS_TOKEN_EXPIRE,
+  });
+};
 
-const generateRefreshToken =(id) =>{
-    return jwt.sign({id},
-    process.env.JWT_REFRESH_SECRET,
-    {expiresIn: process.env.REFRESH_TOKEN_EXPIRE})
-}
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRE,
+  });
+};
 
 // Register a new user and return tokens
 const signup = async (req, res, next) => {
@@ -22,7 +22,7 @@ const signup = async (req, res, next) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const user = await User.create({ name, email, password });
@@ -37,40 +37,43 @@ const signup = async (req, res, next) => {
     try {
       await sendEmail({
         to: user.email,
-        subject: 'Welcome to Nextwork Product Catalog!',
+        subject: "Welcome to Nextwork Product Catalog!",
         html: `<h1>Welcome, ${user.name}!</h1><p>Thanks for signing up. You can now manage products in the catalog.</p>`,
       });
     } catch (emailError) {
-      console.error('Welcome email failed:', emailError.message);
+      console.error("Welcome email failed:", emailError.message);
     }
 
     res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message: "User created successfully",
       accessToken,
       refreshToken,
-      data: { id: user._id, name: user.name, email: user.email },
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-
-
 // Authenticate user and return tokens
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const accessToken = generateAccessToken(user._id);
@@ -81,33 +84,35 @@ const login = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       accessToken,
       refreshToken,
-      data: { id: user._id, name: user.name, email: user.email },
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-
-
 // Invalidate refresh token on logout
 const logout = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id).select('+refreshToken');
+    const user = await User.findById(req.user._id).select("+refreshToken");
     if (user) {
       user.refreshToken = undefined;
       await user.save();
     }
 
-    res.status(200).json({ message: 'Logged out successfully' });
+    res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     next(error);
   }
 };
-
 
 // Verify refresh token and issue a new token pair
 const refreshAccessToken = async (req, res, next) => {
@@ -115,19 +120,21 @@ const refreshAccessToken = async (req, res, next) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(400).json({ message: 'Refresh token is required' });
+      return res.status(400).json({ message: "Refresh token is required" });
     }
 
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     } catch (err) {
-      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+      return res
+        .status(401)
+        .json({ message: "Invalid or expired refresh token" });
     }
 
-    const user = await User.findById(decoded.id).select('+refreshToken');
+    const user = await User.findById(decoded.id).select("+refreshToken");
     if (!user || user.refreshToken !== refreshToken) {
-      return res.status(401).json({ message: 'Invalid refresh token' });
+      return res.status(401).json({ message: "Invalid refresh token" });
     }
 
     const newAccessToken = generateAccessToken(user._id);

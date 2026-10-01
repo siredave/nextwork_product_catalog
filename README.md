@@ -1,6 +1,6 @@
-# Product Catalog API
+# Cake Shop Backend API
 
-Clear, production-ready backend for a simple product catalog built with Node.js, Express, and MongoDB. This repository demonstrates a small, well-structured API with image uploads to Cloudinary, input validation, and sensible defaults so others can run, test, and extend it easily.
+Backend foundation for a cake shop built with Node.js, Express, and MongoDB. The API supports customer accounts and a cake catalog with Cloudinary image uploads. Commerce features such as carts, checkout, payments, and order fulfillment are planned as subsequent milestones.
 
 Table of contents
 - [Features](#features)
@@ -19,9 +19,10 @@ Table of contents
 - [License](#license)
 
 Features
-- CRUD for products (`name`, `price`, `category`, `description`)
+- Cake catalog CRUD (`name`, `price`, `category`, `description`, and images)
 - User signup, login, logout, and refresh-token authentication with JWT
-- Ownership-based authorization for product creation, updates, and deletion
+- Role-based access control for customer, staff, and admin accounts
+- Admin-only cake catalog mutations; public cake browsing
 - Image upload to Cloudinary (stored as `imageUrl` and `imagePublicId`)
 - Listing with pagination, filtering, and sorting
 - Input validation (`express-validator`) and consistent error payloads
@@ -136,19 +137,26 @@ Authentication routes use the `/api/v1/auth` prefix. Passwords are hashed before
 - Header: `Authorization: Bearer <ACCESS_TOKEN>`
 - Expected response (200): invalidates the stored refresh token.
 
-Authorization
+Authorization and role provisioning
 Product mutations require a valid access token in the request header:
 
 ```http
 Authorization: Bearer <ACCESS_TOKEN>
 ```
 
-- `POST /products` requires authentication and records the authenticated user as `createdBy`.
-- `PUT /products/:id` requires authentication and can only be used by the product owner.
-- `DELETE /products/:id` requires authentication and can only be used by the product owner.
+- `POST /products`, `PUT /products/:id`, and `DELETE /products/:id` require an authenticated admin.
 - `GET /products` and `GET /products/:id` are publicly readable.
 - Missing or invalid tokens return `401 Unauthorized`.
-- A valid token for a different product owner returns `403 Forbidden` for update or delete attempts.
+- Authenticated customers and staff receive `403 Forbidden` when attempting admin-only catalog changes.
+- Public signup does not accept a role field. New accounts are always assigned `customer` by the database schema.
+
+Create the initial shop-owner account through the normal signup flow, then promote it using an operator-controlled deployment environment with database access:
+
+```bash
+npm run admin:promote -- owner@example.com
+```
+
+The command only promotes an existing account and never creates users or accepts a role from an HTTP request. Restrict access to the production database and promotion command to trusted operators. Do not add an admin-creation route to public signup.
 
 5) Health
 - Method: `GET`
@@ -205,6 +213,7 @@ This endpoint requires `Authorization: Bearer <ACCESS_TOKEN>`.
 - Option A — form-data (image upload)
   - Postman: `POST http://localhost:5000/api/v1/products` → `Body` → `form-data`
   - Add keys: `name` (Text), `price` (Text), `category` (Text), `description` (Text), `image` (File)
+  - The request must use a bearer token for an admin account.
 
   - Example cURL (multipart):
 

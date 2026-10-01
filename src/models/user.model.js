@@ -16,6 +16,13 @@ const userSchema = new mongoose.Schema({
     trim: true,
     match: [/\S+@\S+\.\S+/, "Please provide a valid email address"],
   },
+  // Public registration always creates a customer; elevated roles are assigned out of band.
+  role: {
+    type: String,
+    enum: ["customer", "staff", "admin"],
+    default: "customer",
+    required: true,
+  },
   password: {
     type: String,
     required: [true, "Please provide a password"],
